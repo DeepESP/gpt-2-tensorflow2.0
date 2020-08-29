@@ -7,8 +7,8 @@ from tensorflow.python.framework import tensor_shape
 from utils.tf_utils import *
 import os
 
-_ROOT = os.path.abspath(os.path.dirname(__file__))
-LOG_DIR = _ROOT + "/log"
+# _ROOT = os.path.abspath(os.path.dirname(__file__))
+# LOG_DIR = _ROOT + "/log"
 
 train_step_signature = [
     tf.TensorSpec(shape=(None, None), dtype=tf.int32, name="Inputs"),
@@ -19,7 +19,7 @@ train_step_signature = [
 
 class Gpt2(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, max_seq_len, vocab_size,
-                 optimizer="adam", learning_rate=1e-3, rev_embedding_projection=True):
+                 optimizer="adam", learning_rate=1e-3, rev_embedding_projection=True, log_dir="./log"):
         super(Gpt2, self).__init__()
 
         self.rev_embedding_projection = rev_embedding_projection
@@ -33,6 +33,7 @@ class Gpt2(tf.keras.Model):
         self.optimizer_t = optimizer
         self.dataset = None
         self.mirrored_strategy = None
+        self.log_dir = log_dir
 
         self.embedding = EmbeddingLayer(
             self.vocab_size, self.d_model)
@@ -216,7 +217,7 @@ class Gpt2(tf.keras.Model):
                         tf.summary.trace_export(
                             name="gpt-2",
                             step=0,
-                            profiler_outdir=LOG_DIR)
+                            profiler_outdir=self.log_dir)
 
                 if step % 1000 == 0:
                     ckpt_save_path = self.ckpt_manager.save()
@@ -232,7 +233,7 @@ class Gpt2(tf.keras.Model):
                             tf.summary.trace_export(
                                 name="gpt-2",
                                 step=0,
-                                profiler_outdir=LOG_DIR)
+                                profiler_outdir=self.log_dir)
                     if step % 100 == 0:
                         print('Step {} Train_Loss {:.4f}'.format(
                             step, train_loss))
@@ -295,5 +296,3 @@ class DecoderLayer(tf.keras.layers.Layer):
         with tf.name_scope("residual_conn"):
             x = x + out
         return x, present
-    
-    
