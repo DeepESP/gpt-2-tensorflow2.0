@@ -81,7 +81,7 @@ def train(num_layers, embedding_size, num_heads, dff, max_seq_len, vocab_size,
             break
             exit()
         model = Gpt2(num_layers, embedding_size, num_heads, dff, max_seq_len, vocab_size,
-                     optimizer=optimizer, learning_rate=learning_rate)
+                     optimizer=optimizer, learning_rate=learning_rate, log_dir=log_dir)
         model.creat_optimizer()
         model.create_checkpoint_manager(model_dir)
         model.create_summary_writer(log_dir)
