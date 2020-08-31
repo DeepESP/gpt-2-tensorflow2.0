@@ -54,7 +54,7 @@ def parse_example(serialized_example):
     }
     parsed = tf.io.parse_single_example(serialized_example, data_fields)
     seq_length = 515 + 1
-    seq_length = 1024 + 1
+    seq_length = 1024 + 0  # On TPU must be 1024 + 0
     inputs = parsed["input_ids"][0:seq_length]
     targets = parsed["input_ids"][0:seq_length]
     inputs = inputs[:-1]
@@ -68,15 +68,16 @@ def parse_example(serialized_example):
     return inputs, targets
 
 
-def input_fn(tf_records, batch_size=32, padded_shapes=([-1], [-1]), epoch=10, buffer_size=10000):
+def input_fn(tf_records, batch_size=32, padded_shapes=([-1], [-1]), epoch=10, buffer_size=100):
     input_files = tf.data.Dataset.list_files(tf_records)
-    dataset = tf.data.TFRecordDataset(input_files, buffer_size=10000)
+    dataset = input_files.shuffle(buffer_size=512)
+    dataset = tf.data.TFRecordDataset(dataset, buffer_size=100)
     dataset = dataset.shuffle(buffer_size=buffer_size)
-
-    dataset = dataset.map(parse_example)
+    AUTOTUNE = tf.data.experimental.AUTOTUNE
+    dataset = dataset.map(parse_example, num_parallel_calls=AUTOTUNE)
     dataset = dataset.padded_batch(batch_size, padded_shapes=padded_shapes)
     dataset = dataset.repeat(epoch)
-    dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.prefetch(buffer_size=AUTOTUNE)
     return dataset
 
 

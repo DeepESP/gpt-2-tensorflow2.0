@@ -206,6 +206,8 @@ class Gpt2(tf.keras.Model):
     def fit(self, train_dataset):
         if self.mirrored_strategy is None:
             tf.summary.trace_on(graph=True, profiler=True)
+            if False:
+                tf.profiler.experimental.server.start(6009)
             for (step, (inputs, targets)) in enumerate(train_dataset):
                 train_loss, train_acc = self.train_step(inputs, targets, step)
                 if step % 10 == 0:

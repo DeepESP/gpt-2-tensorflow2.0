@@ -6,6 +6,8 @@ import tensorflow as tf
 import os
 import json
 
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 LOG_DIR = _ROOT + "/log"
 MODEL_DIR = _ROOT + "/model"
@@ -26,9 +28,10 @@ DATASET_PATH = _ROOT + "/data/tf_records/*.tfrecord"
 @click.option('--dataset-path', type=str, default=DATASET_PATH, show_default=True, help="dataset path")
 @click.option('--model-dir', type=str, default=MODEL_DIR, show_default=True, help="model directory")
 @click.option('--log-dir', type=str, default=LOG_DIR, show_default=True, help="log directory")
+@click.option('--use-tpu', type=bool, default=False, show_default=True, help="use TPU")
 def train(num_layers, embedding_size, num_heads, dff, max_seq_len, vocab_size,
           optimizer="adam", batch_size=16, learning_rate=1e-3, distributed=False,
-          dataset_path="", model_dir="", log_dir=""):
+          dataset_path="", model_dir="", log_dir="", use_tpu=True):
 
     par_map = {"num_layers": num_layers, "d_model": embedding_size,
                "num_heads": num_heads, "dff": dff,
@@ -42,9 +45,16 @@ def train(num_layers, embedding_size, num_heads, dff, max_seq_len, vocab_size,
     with open(model_dir + '/model_par.json', 'w') as f:
         json.dump(par_map, f)
 
-    tf_records = glob.glob((dataset_path))
+    # On TPUs, use 'mixed_bfloat16' instead
+    # policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
+    # mixed_precision.set_policy(policy)
+
+    # print('Compute dtype: %s' % policy.compute_dtype)
+    # print('Variable dtype: %s' % policy.variable_dtype)
+
+    # tf_records = glob.glob((dataset_path))
     if distributed:
-        dist_dataset = input_fn(tf_records, batch_size=batch_size)
+        dist_dataset = input_fn(dataset_path, batch_size=batch_size)
         mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0", "/gpu:1"])
         dist_dataset = mirrored_strategy.experimental_distribute_dataset(dist_dataset)
         with mirrored_strategy.scope():
@@ -58,7 +68,14 @@ def train(num_layers, embedding_size, num_heads, dff, max_seq_len, vocab_size,
         model.mirrored_strategy = mirrored_strategy
         model.fit(dist_dataset)
     else:
-        dataset = input_fn(tf_records, batch_size=batch_size)
+        if use_tpu:
+            tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+            print("Device:", tpu.master())
+            tf.config.experimental_connect_to_cluster(tpu)
+            tf.tpu.experimental.initialize_tpu_system(tpu)
+            strategy = tf.distribute.TPUStrategy(tpu)
+            batch_size *= strategy.num_replicas_in_sync
+        dataset = input_fn(dataset_path, batch_size=batch_size)
         for d in dataset:
             print(d)
             break

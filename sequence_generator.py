@@ -13,16 +13,17 @@ import click
 @click.option('--nucleus_sampling', type=bool, default=False, show_default=True, help="seq_len")
 @click.option('--context', type=str, default="sample context", show_default=True, help="Context given to model")
 def seq_gen(model_path, model_param, vocab, seq_len, temperature, top_k, top_p, nucleus_sampling, context):
-	sg = SequenceGenerator(model_path, model_param, vocab)
-	sg.load_weights()
-	generated_seq = sg.sample_sequence(context,
-									   seq_len=seq_len,
-									   temperature=temperature,
-									   top_k=top_k,
-									   top_p=top_p,
-									   nucleus_sampling=nucleus_sampling)
-	print("Generated seq by model:- " + generated_seq)
+    sg = SequenceGenerator(model_path, model_param, vocab)
+    sg.load_weights()
+    generated_seq = sg.sample_sequence(context,
+                                       seq_len=seq_len,
+                                       temperature=temperature,
+                                       top_k=top_k,
+                                       top_p=top_p,
+                                       nucleus_sampling=nucleus_sampling)
+    print("Generated seq by model:- ")
+    print(generated_seq)
 
 
 if __name__ == "__main__":
-	seq_gen()
+    seq_gen()
